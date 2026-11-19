@@ -118,3 +118,45 @@ async def require_login(request: Request, call_next):
 
     return await call_next(request)
 
+
+def get_db():
+    return create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SECRET_KEY"]
+    )
+
+
+@app.get("/api/data")
+def load_data():
+    try:
+        db = get_db()
+
+        recipes = db.table("recipes").select(
+            "*"
+        ).execute().data
+
+        items = db.table("recipe_items").select(
+            "*"
+        ).execute().data
+
+        pigments = db.table("pigments").select(
+            "*"
+        ).execute().data
+
+        settings = db.table("app_settings").select(
+            "*"
+        ).eq("id", "main").execute().data
+
+        return {
+            "ok": True,
+            "recipes": recipes,
+            "recipe_items": items,
+            "pigments": pigments,
+            "app_settings": settings[0] if settings else {}
+        }
+
+    except Exception as exc:
+        print("LOAD DATA ERROR:", type(exc).__name__, flush=True)
+        raise HTTPException(
+            500, "Ошибка загрузки данных"
+        )
