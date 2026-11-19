@@ -80,3 +80,41 @@ def db_check():
             503, 'Database connection failed'
         )
 
+
+import os
+import secrets
+import base64
+from fastapi import Request
+from fastapi.responses import Response
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    username = os.getenv("APP_USERNAME")
+    password = os.getenv("APP_PASSWORD")
+
+    if not username or not password:
+        return Response(
+            "Authorization not configured",
+            status_code=503
+        )
+
+    expected = "Basic " + base64.b64encode(
+        f"{username}:{password}".encode("utf-8")
+    ).decode("ascii")
+
+    actual = request.headers.get("Authorization", "")
+
+    if not secrets.compare_digest(
+        actual.encode("utf-8"),
+        expected.encode("utf-8")
+    ):
+        return Response(
+            "Authorization required",
+            status_code=401,
+            headers={
+                "WWW-Authenticate": 'Basic realm="ROODELL SERVICE"'
+            }
+        )
+
+    return await call_next(request)
+
