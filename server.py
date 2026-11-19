@@ -160,3 +160,57 @@ def load_data():
         raise HTTPException(
             500, "Ошибка загрузки данных"
         )
+
+
+
+from uuid import UUID
+from pydantic import BaseModel, Field
+
+
+class RecipeItemInput(BaseModel):
+    pigment_code: str = Field(min_length=1)
+    grams: float = Field(gt=0, allow_inf_nan=False)
+
+
+class RecipeInput(BaseModel):
+    id: UUID | None = None
+    color_code: str = Field(min_length=1)
+    color_name: str = Field(min_length=1)
+    items: list[RecipeItemInput] = Field(min_length=1)
+
+
+@app.post("/api/recipes/save")
+def save_recipe(data: RecipeInput):
+    try:
+        db = get_db()
+
+        result = db.rpc(
+            "save_recipe",
+            {
+                "p_id": str(data.id) if data.id else None,
+                "p_color_code": data.color_code,
+                "p_color_name": data.color_name,
+                "p_items": [
+                    {
+                        "pigment_code": item.pigment_code,
+                        "grams": item.grams
+                    }
+                    for item in data.items
+                ]
+            }
+        ).execute()
+
+        return {
+            "ok": True,
+            "id": result.data
+        }
+
+    except Exception as exc:
+        print(
+            "SAVE RECIPE ERROR:",
+            type(exc).__name__,
+            flush=True
+        )
+        raise HTTPException(
+            500, "Ошибка сохранения рецепта"
+        )
