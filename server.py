@@ -249,3 +249,60 @@ def save_settings(data: SettingsInput):
         raise HTTPException(
             500, "Ошибка сохранения параметров"
         )
+
+
+
+class PigmentInput(BaseModel):
+    code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    pack: float = Field(gt=0, allow_inf_nan=False)
+    price: float = Field(ge=0, allow_inf_nan=False)
+    density: float | None = Field(
+        default=None, gt=0, allow_inf_nan=False
+    )
+
+
+@app.post("/api/pigments/save")
+def save_pigment(data: PigmentInput):
+    try:
+        db = get_db()
+
+        row = {
+            "code": data.code.strip(),
+            "name": data.name.strip(),
+            "pack": data.pack,
+            "price": data.price,
+            "price_per_liter": data.price / data.pack,
+            "updated_at": "now()"
+        }
+
+        if data.density is not None:
+            row["density"] = data.density
+        else:
+            existing = db.table("pigments").select(
+                "density"
+            ).eq("code", data.code.strip()).execute().data
+
+            if existing:
+                row["density"] = existing[0]["density"] or 1
+            else:
+                row["density"] = 1
+
+        result = db.table("pigments").upsert(
+            row, on_conflict="code"
+        ).execute()
+
+        return {
+            "ok": True,
+            "pigment": result.data[0] if result.data else row
+        }
+
+    except Exception as exc:
+        print(
+            "SAVE PIGMENT ERROR:",
+            type(exc).__name__,
+            flush=True
+        )
+        raise HTTPException(
+            500, "Ошибка сохранения пигмента"
+        )
