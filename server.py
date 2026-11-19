@@ -214,3 +214,38 @@ def save_recipe(data: RecipeInput):
         raise HTTPException(
             500, "Ошибка сохранения рецепта"
         )
+class SettingsInput(BaseModel):
+    settings: dict
+    thinners: dict
+
+
+@app.post("/api/settings/save")
+def save_settings(data: SettingsInput):
+    try:
+        db = get_db()
+
+        result = db.table("app_settings").update({
+            "settings": data.settings,
+            "thinners": data.thinners,
+            "updated_at": "now()"
+        }).eq("id", "main").execute()
+
+        if not result.data:
+            raise HTTPException(
+                404, "Настройки не найдены"
+            )
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        print(
+            "SAVE SETTINGS ERROR:",
+            type(exc).__name__,
+            flush=True
+        )
+        raise HTTPException(
+            500, "Ошибка сохранения параметров"
+        )
