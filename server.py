@@ -73,7 +73,9 @@ def db_check():
         )
         db.table('recipes').select('*').limit(1).execute()
         return {'ok': True, 'database': 'connected'}
-    except Exception:
+    except Exception as exc:
+        print("DB CHECK ERROR:", type(exc).__name__,
+              getattr(exc, "code", ""), flush=True)
         raise HTTPException(
             503, 'Database connection failed'
         )
