@@ -62,3 +62,19 @@ async def vision(kind: str, req: ImageRequest):
         return {'items':items,'warnings':data.get('warnings',[])}
     except Exception as exc:
         raise HTTPException(502, 'Ошибка ИИ-распознавания. Повторите попытку или проверьте настройки сервера.') from exc
+from supabase import create_client
+
+@app.get('/api/db-check')
+def db_check():
+    try:
+        db = create_client(
+            os.environ['SUPABASE_URL'],
+            os.environ['SUPABASE_SECRET_KEY']
+        )
+        db.table('recipes').select('*').limit(1).execute()
+        return {'ok': True, 'database': 'connected'}
+    except Exception:
+        raise HTTPException(
+            503, 'Database connection failed'
+        )
+
